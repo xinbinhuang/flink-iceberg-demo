@@ -1,0 +1,76 @@
+version: "3.7"
+
+x-flink-common: &flink-common
+    build: 
+      context: ./flink
+    restart: always
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: jobmanager
+      TASK_MANAGER_NUMBER_OF_TASK_SLOTS: 4
+      FLINK_PROPERTIES: |-
+        state.backend: filesystem
+        state.checkpoints.dir: file:///tmp/flink-checkpoints-dir
+        state.savepoints.dir: file:///tmp/flink-savepoints-dir
+    volumes:
+      - ./.local/flink/checkpoints-dir:/tmp/flink-checkpoints-dir
+      - ./.local/flink/savepoints-dir:/tmp/flink-savepoints-dir
+
+services:
+  # Kafka
+  zookeeper:
+    image: wurstmeister/zookeeper:3.4.6
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: wurstmeister/kafka:2.12-2.2.1
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: "kafka"
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://:9092,OUTSIDE://:9094
+      KAFKA_LISTENERS: INSIDE://:9092,OUTSIDE://:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_CREATE_TOPICS: "cdc-sink:2:1"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    ports:
+      - 9092:9092
+      - 9094:9094
+
+  # Hive Meatastore
+  hive:
+    build: 
+      context: ./hive-metastore
+    ports:
+      - "9083:9083"
+      - "10000:10000"
+      - "10002:10002"
+    links:
+      - "hive-postgres:postgres"
+
+  hive-postgres:
+    image: postgres:10
+    environment:
+      - POSTGRES_USER=hive
+      - POSTGRES_PASSWORD=hive
+      - POSTGRES_DB=metastore
+
+  # Source Mysql DB
+  mysql:
+    image: mysql:8.0.19
+    ports: 
+      - 3306:3306
+    volumes:
+      - ./data/transactions.sql:/docker-entrypoint-initdb.d/transactions.sql
+    environment:
+      MYSQL_DATABASE: ledger
+      MYSQL_ROOT_PASSWORD: ledger
+
+  # Flink Cluster
+  jobmanager: 
+    <<: *flink-common
+    command: jobmanager
+    ports:
+      - 8081:8081
+  taskmanager:
+    <<: *flink-common
+    command: taskmanager
