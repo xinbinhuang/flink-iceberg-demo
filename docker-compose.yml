@@ -3,6 +3,7 @@ version: "3.7"
 x-flink-common: &flink-common
     build: 
       context: ./flink
+    image: sc/flink-iceberg
     restart: always
     environment:
       JOB_MANAGER_RPC_ADDRESS: jobmanager
@@ -12,8 +13,11 @@ x-flink-common: &flink-common
         state.checkpoints.dir: file:///tmp/flink-checkpoints-dir
         state.savepoints.dir: file:///tmp/flink-savepoints-dir
     volumes:
+      - /Users/binh/projects/iceberg/flink/v1.12/flink-runtime/build/libs/iceberg-flink-1.12-runtime-0.13.0-SNAPSHOT.jar:/opt/flink/lib/iceberg-flink-1.12-runtime-0.13.0-SNAPSHOT.jar
       - ./.local/flink/checkpoints-dir:/tmp/flink-checkpoints-dir
       - ./.local/flink/savepoints-dir:/tmp/flink-savepoints-dir
+      - ./.local/iceberg/warehouse/:/tmp/iceberg/warehouse/
+      - ./flink/conf/flink-sql.yaml:/opt/flink/conf/flink-sql.yaml
 
 services:
   # Kafka
@@ -49,6 +53,8 @@ services:
 
   hive-postgres:
     image: postgres:10
+    ports:
+      - 5432:5432
     environment:
       - POSTGRES_USER=hive
       - POSTGRES_PASSWORD=hive
@@ -60,10 +66,14 @@ services:
     ports: 
       - 3306:3306
     volumes:
-      - ./data/transactions.sql:/docker-entrypoint-initdb.d/transactions.sql
+      - ./data:/docker-entrypoint-initdb.d
+      - ./.local/mysql:/var/lib/mysql
     environment:
-      MYSQL_DATABASE: ledger
-      MYSQL_ROOT_PASSWORD: ledger
+      MYSQL_DATABASE: demo
+      MYSQL_PASSWORD: "demo"
+      MYSQL_DATABASE: "demo"
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+
 
   # Flink Cluster
   jobmanager: 
@@ -74,3 +84,12 @@ services:
   taskmanager:
     <<: *flink-common
     command: taskmanager
+    depends_on:
+      - jobmanager
+
+  adhoc:
+    <<: *flink-common
+    command: adhoc
+    depends_on:
+      - jobmanager
+    tty: true

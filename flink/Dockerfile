@@ -20,9 +20,7 @@ RUN curl -L \
   && chmod 777 $HADOOP_CONF_DIR \
   && chmod 777 $HADOOP_HOME/logs
 
-RUN export HADOOP_CLASSPATH=$($HADOOP_HOME/bin/hadoop classpath)
-
-
+# Install Flink
 ARG FLINK_VERSION
 ARG SCALA_VERSION
 ENV FLINK_VERSION=${FLINK_VERSION}
@@ -38,7 +36,8 @@ ARG FLINK_JARS="\
     flink-sql-connector-hive-2.3.6"
 ARG EXTRA_JARS="\
     https://repo.maven.apache.org/maven2/mysql/mysql-connector-java/8.0.19/mysql-connector-java-8.0.19.jar \
-    https://repo1.maven.org/maven2/com/alibaba/ververica/flink-sql-connector-mysql-cdc/1.3.0/flink-sql-connector-mysql-cdc-1.3.0.jar"
+    https://repo1.maven.org/maven2/com/alibaba/ververica/flink-sql-connector-mysql-cdc/1.3.0/flink-sql-connector-mysql-cdc-1.3.0.jar \
+    https://jdbc.postgresql.org/download/postgresql-42.3.1.jar"
 
 RUN for flink_jar in ${FLINK_JARS}; do \
         wget -P ${FLINK_LIB_DIR} ${FLINK_MAVEN_URL}/${flink_jar}_${SCALA_VERSION}/${FLINK_VERSION}/${flink_jar}_${SCALA_VERSION}-${FLINK_VERSION}.jar; \
@@ -47,5 +46,9 @@ RUN for flink_jar in ${FLINK_JARS}; do \
         wget -P ${FLINK_LIB_DIR} ${extra_jar}; \
     done
 
+COPY entrypoint.sh /
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT [ "/entrypoint.sh" ]
 
 

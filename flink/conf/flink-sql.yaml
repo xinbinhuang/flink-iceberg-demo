@@ -1,0 +1,19 @@
+catalogs:
+  - name: iceberg_hadoop
+    type: iceberg
+    property-version: 1
+    catalog-type: hadoop
+    warehouse: file:///tmp/iceberg/warehouse/hadoop
+  - name: iceberg_hive
+    type: iceberg
+    property-version: 1
+    catalog-type: hive
+    uri: thrift://hive:9083
+    clients: 5
+    warehouse: file:///tmp/iceberg/warehouse/hive
+    default-database: demo
+
+execution:
+  result-mode: changelog
+  current-catalog: iceberg_hive
+  current-database: demo
