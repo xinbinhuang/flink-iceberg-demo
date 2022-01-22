@@ -19,7 +19,7 @@ CREATE TABLE iceberg_upsert(
     'format-version' = '2',
     'catalog-name'='demo',
     'catalog-type'='hadoop',
-    'warehouse'='file:///tmp/iceberg/warehouse',
+    'warehouse'='file:///tmp/iceberg/warehouse/hadoop',
     'write.upsert.enable'='true'
 );
 

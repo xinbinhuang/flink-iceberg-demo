@@ -1,7 +1,7 @@
 
 SET table.dynamic-table-options.enabled=true;
 SET execution.type = streaming ;
-SET 'sql-client.execution.result-mode' = 'changelog';
+SET execution.result-mode = 'table';
 
 CREATE CATALOG demo WITH (
   'type'='iceberg',
@@ -13,10 +13,10 @@ CREATE CATALOG demo WITH (
 CREATE CATALOG hive_catalog WITH (
   'type'='iceberg',
   'catalog-type'='hive',
-  'uri'='thrift://localhost:9083',
+  'uri'='thrift://hive:9083',
   'clients'='5',
   'property-version'='1',
-  'warehouse'='hdfs://nn:8020/warehouse/path'
+  'warehouse'='file:///tmp/iceberg/warehouse/hive'
 );
 
 
@@ -27,7 +27,6 @@ USE iceberg_db;
 CREATE TABLE iceberg_upsert(
     id   BIGINT,
     data STRING,
-    PRIMARY KEY (id) NOT ENFORCED
 ) WITH (
     'connector'='iceberg',
     'format-version' = '2',
@@ -39,20 +38,75 @@ CREATE TABLE iceberg_upsert(
 
 CREATE TABLE iceberg_upsert(
     id   BIGINT,
-    data STRING,
-    PRIMARY KEY (id) NOT ENFORCED
+    data STRING
+) WITH (
+    'catalog-name'='hive-catalog',
+    'catalog-db'='demo',
+    'catalog-type'='hive',
+    'format-version' = '2',
+    'write.upsert.enable'='true'
+);
+
+CREATE TABLE iceberg_upsert (
+    id   BIGINT,
+    data STRING
 ) WITH (
     'connector'='iceberg',
-    'format-version' = '2',
-    'catalog-name'='demo',
+    'catalog-name'='hive-catalog',
+    'catalog-database'='local',
     'catalog-type'='hive',
-    'warehouse'='file:///tmp/iceberg/warehouse',
+    'format-version' = '2',
+    'uri'='thrift://hive:9083',
+    'warehouse'='file:///tmp/iceberg/warehouse/hive',
+    'write.upsert.enable'='true'
+);
+
+CREATE TABLE demo (
+    id   BIGINT,
+    data STRING
+) WITH (
+    'format-version' = '2',
     'write.upsert.enable'='true'
 );
 
 
-INSERT INTO iceberg_upsert VALUES(1,'qq');
+INSERT INTO demo VALUES 
+  (1, 'AAA'),
+  (2, 'BBB'),
+  (3, 'CCC'),
+  (4, 'DDD'),
+  (5, 'EEE'),
+  (6, 'FFF')
+;
+INSERT OVERWRITE demo values (1, 'AAA'), (2, 'BBB'), (3, 'CCC');
 
-INSERT INTO iceberg_upsert VALUES(2,'aa');
 
-SELECT * FROM iceberg_upsert /*+ OPTIONS('streaming'='true', 'monitor-interval'='1s') */ ;
+/* streaming read query */
+SELECT * FROM demo /*+ OPTIONS('streaming'='true', 'monitor-interval'='1s') */ ;
+
+
+
+CREATE CATALOG mypg WITH(
+    'type' = 'jdbc',
+    'default-database' = 'metastore',
+    'username' = 'hive',
+    'password' = 'hive',
+    'base-url' = 'jdbc:postgresql://hive:5432/'
+);
+
+
+CREATE TABLE charges (
+     id INT,
+     amount INT,
+     create_time TIMESTAMP,
+     updated_time TIMESTAMP,
+     PRIMARY KEY(id) NOT ENFORCED
+) WITH (
+    'connector' = 'mysql-cdc',
+    'hostname' = 'mysql',
+    'port' = '3306',
+    'username' = 'demo',
+    'password' = 'demo',
+    'database-name' = 'demo',
+    'table-name' = 'charges'
+);

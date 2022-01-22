@@ -14,6 +14,5 @@ catalogs:
     default-database: demo
 
 execution:
-  result-mode: changelog
   current-catalog: iceberg_hive
   current-database: demo

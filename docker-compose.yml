@@ -6,12 +6,15 @@ x-flink-common: &flink-common
     image: sc/flink-iceberg
     restart: always
     environment:
-      JOB_MANAGER_RPC_ADDRESS: jobmanager
-      TASK_MANAGER_NUMBER_OF_TASK_SLOTS: 4
       FLINK_PROPERTIES: |-
+        jobmanager.rpc.address: jobmanager
+        taskmanager.numberOfTaskSlots: 10
+        classloader.check-leaked-classloader: false
         state.backend: filesystem
         state.checkpoints.dir: file:///tmp/flink-checkpoints-dir
         state.savepoints.dir: file:///tmp/flink-savepoints-dir
+        restart-strategy.fixed-delay.attempts: 3
+        restart-strategy.fixed-delay.delay: 10s
     volumes:
       - /Users/binh/projects/iceberg/flink/v1.12/flink-runtime/build/libs/iceberg-flink-1.12-runtime-0.13.0-SNAPSHOT.jar:/opt/flink/lib/iceberg-flink-1.12-runtime-0.13.0-SNAPSHOT.jar
       - ./.local/flink/checkpoints-dir:/tmp/flink-checkpoints-dir
@@ -67,12 +70,11 @@ services:
       - 3306:3306
     volumes:
       - ./data:/docker-entrypoint-initdb.d
-      - ./.local/mysql:/var/lib/mysql
     environment:
       MYSQL_DATABASE: demo
-      MYSQL_PASSWORD: "demo"
-      MYSQL_DATABASE: "demo"
-      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_PASSWORD: demo
+      MYSQL_USER: demo
+      MYSQL_ROOT_PASSWORD: demo
 
 
   # Flink Cluster
@@ -86,10 +88,9 @@ services:
     command: taskmanager
     depends_on:
       - jobmanager
-
   adhoc:
     <<: *flink-common
     command: adhoc
     depends_on:
       - jobmanager
-    tty: true
+
